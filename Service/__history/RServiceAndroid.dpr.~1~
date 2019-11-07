@@ -1,0 +1,13 @@
+program RServiceAndroid;
+
+uses
+  System.Android.ServiceApplication,
+  untMainService in '..\untMainService.pas' {DM: TAndroidService};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TDM, DM);
+  Application.Run;
+end.

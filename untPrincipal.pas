@@ -1,0 +1,396 @@
+unit untPrincipal;
+
+interface
+
+uses
+  System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
+  FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
+  FMX.Controls.Presentation, FMX.StdCtrls, FMX.Objects, FMX.Layouts, FMX.Edit,
+  FMX.TabControl, FMX.MultiView, System.Actions, FMX.ActnList,
+  FMX.ListView.Types, FMX.ListView.Appearances,
+  FMX.ListView.Adapters.Base, FMX.ListView,
+  FMX.ScrollBox, FMX.Memo, FMX.DateTimeCtrls, FMX.Ani,
+  FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Error, FireDAC.UI.Intf,
+  FireDAC.Phys.Intf, FireDAC.Stan.Def, FireDAC.Stan.Pool, FireDAC.Stan.Async,
+  FireDAC.Phys, FireDAC.Phys.SQLite, FireDAC.Phys.SQLiteDef,
+  FireDAC.Stan.ExprFuncs, FireDAC.FMXUI.Wait, FireDAC.Stan.Param, FireDAC.DatS,
+  FireDAC.DApt.Intf, FireDAC.DApt, Data.DB, FireDAC.Comp.DataSet,
+  FireDAC.Comp.Client, MultiDetailAppearanceU, DBAccess, MyAccess, MemDS,
+  System.ImageList, FMX.ImgList, FMX.ExtCtrls,
+  FMX.MediaLibrary.Actions, FMX.StdActns, FMX.ListBox, DateUtils,
+  IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, FMX.Gestures,
+  System.Notification;
+
+type
+  TForm2 = class(TForm)
+    MyConnection1: TMyConnection;
+    qryFinanceiro: TMyQuery;
+    qryLogin: TMyQuery;
+    TabControl1: TTabControl;
+    tbLogin: TTabItem;
+    tbFinanceiro: TTabItem;
+    recPrincLogin: TRectangle;
+    Layout1: TLayout;
+    Layout2: TLayout;
+    Path1: TPath;
+    Line1: TLine;
+    Layout3: TLayout;
+    RoundRect1: TRoundRect;
+    edtLogin: TEdit;
+    Path2: TPath;
+    Layout4: TLayout;
+    Layout8: TLayout;
+    rectLogin: TRoundRect;
+    btnLogin: TButton;
+    lblEsqueceuSenha: TLabel;
+    Rectangle1: TRectangle;
+    Rectangle2: TRectangle;
+    lblTotal: TLabel;
+    ActionList1: TActionList;
+    actMudarAba: TChangeTabAction;
+    Rectangle3: TRectangle;
+    Image1: TImage;
+    Image2: TImage;
+    lblMes: TLabel;
+    lblNome: TLabel;
+    btnSair: TSpeedButton;
+    Edit1: TEdit;
+    lstFinanceiro: TListView;
+    Circle1: TCircle;
+    btnWpp: TSpeedButton;
+    IdTCPClient1: TIdTCPClient;
+    GestureManager1: TGestureManager;
+    StyleBook1: TStyleBook;
+    FDConnection1: TFDConnection;
+    qryConfig: TFDQuery;
+    Layout5: TLayout;
+    swcLembrar: TSwitch;
+    lblLembrar: TLabel;
+    qryAuxiliar: TFDQuery;
+    qryGetPDF: TMyQuery;
+    procedure FormShow(Sender: TObject);
+    procedure imgProximoClick(Sender: TObject);
+    procedure imgAnteriorClick(Sender: TObject);
+    procedure btnLoginClick(Sender: TObject);
+    procedure edtLoginKeyUp(Sender: TObject; var Key: Word; var KeyChar: Char;
+      Shift: TShiftState);
+    procedure btnSairClick(Sender: TObject);
+    procedure btnWppClick(Sender: TObject);
+    procedure lstFinanceiroGesture(Sender: TObject;
+      const EventInfo: TGestureEventInfo; var Handled: Boolean);
+    procedure FormCreate(Sender: TObject);
+    procedure FDConnection1BeforeConnect(Sender: TObject);
+    procedure lstFinanceiroItemClick(const Sender: TObject;
+      const AItem: TListViewItem);
+  private
+    { Private declarations }
+    vCPF : String;
+    procedure MudarAba (AtabItem: TTabItem; Sender: TObject);
+    procedure CarregaFinanceiro(dtInicio, dtFim : String);
+    function TestaConexao : Boolean;
+  public
+    { Public declarations }
+  end;
+
+var
+  Form2: TForm2;
+
+implementation
+
+uses
+  System.IOUtils,
+  Androidapi.JNI.GraphicsContentViewText,
+  Androidapi.Helpers,
+  Androidapi.JNI.JavaTypes,
+  Androidapi.JNI.Net,
+  FMX.Helpers.Android,
+  idUri,
+  Androidapi.Jni,
+  Androidapi.JNIBridge;
+
+{$R *.fmx}
+
+procedure TForm2.btnLoginClick(Sender: TObject);
+var
+  vDtInicio, vDtFim : String;
+begin
+  if edtLogin.Text <> '' then
+  begin
+    MyConnection1.Connected := True;
+    qryLogin.Close;
+    qryLogin.SQL.Clear;
+    qryLogin.SQL.Add('Select * from CLIENTE WHERE CPF = ' + QuotedStr(edtLogin.Text));
+    qryLogin.Open;
+
+    if qryLogin.RecordCount > 0  then
+    BEGIN
+      vCPF := edtLogin.Text;
+      Edit1.Text := DateToStr(Date);
+      lblMes.Text := '';
+      lblMes.Text := uppercase(formatdatetime('MMMM',(StrToDate(Edit1.Text))));
+
+      vDtInicio := 'STR_TO_DATE(" ' + DateToStr(StartOfTheMonth(StrToDate(Edit1.Text))) + ' ", "%d/%m/%Y")';
+      vDtFim := 'STR_TO_DATE("' + DateToStr(EndOfTheMonth(StrToDate(Edit1.Text))) + '", "%d/%m/%Y")';
+
+      CarregaFinanceiro(vDtInicio, vDtFim);
+
+      lblNome.Text := qryLogin.FieldByName('nome').AsString;
+
+      if swcLembrar.IsChecked = True then
+      begin
+        qryConfig.Close;
+        qryConfig.SQL.Clear;
+        qryConfig.SQL.Add('UPDATE CONFIG SET LEMBRAR = ' + QuotedStr('S') + ', CPF = ' + QuotedStr(edtLogin.Text));
+        qryConfig.Execute;
+        swcLembrar.IsChecked := False;
+      end;
+
+      MudarAba(tbFinanceiro, Sender);
+      edtLogin.Text := '';
+    END
+    ELSE
+    BEGIN
+      ShowMessage('CPF não encontrado!');
+    END;
+  end
+  else
+  begin
+    ShowMessage('Informa um CPF!');
+    edtlogin.SetFocus;
+  end;
+end;
+
+procedure TForm2.btnSairClick(Sender: TObject);
+begin
+  qryFinanceiro.Close;
+  qryFinanceiro.SQL.Clear;
+  edtLogin.Text := '';
+  edtLogin.SetFocus;
+  MyConnection1.Connected := False;
+  qryConfig.Close;
+  qryConfig.SQL.Clear;
+  qryConfig.SQL.Add('UPDATE CONFIG SET LEMBRAR = ' + QuotedStr('N') + ', CPF = ' + QuotedStr(''));
+  qryConfig.Execute;
+  swcLembrar.IsChecked := False;
+  MudarAba(tbLogin, Sender);
+end;
+
+procedure TForm2.btnWppClick(Sender: TObject);
+var
+  vNumero, vTexto, vEndURL, vCaminho : String;
+  vPath : TPath;
+
+  {$IFDEF ANDROID}
+     Intent      : JIntent;
+     URI         : Jnet_Uri;
+  {$ENDIF}
+
+  {{$IFDEF ANDROID
+  Intend: JIntent;
+  $ENDIF ANDROID}
+begin
+  qryGetPDF.Close;
+  qryGetPDF.SQL.Clear;
+  qryGetPDF.SQL.Add('Select PDF from CLIENTE Where CPF = ' + QuotedStr(vCPF));
+  qryGetPDF.Open;
+  if qryGetPDF.RecordCount > 0 then
+  begin
+    //vCaminho := GetHomePath + PathDelim + 'BoletoNu.pdf';
+    vCaminho := System.IOUtils.TPath.GetDownloadsPath + PathDelim + 'BoletoNu.pdf';
+    TBlobField(qryGetPDF.FieldByName('PDF')).SaveToFile(vCaminho);
+    ShowMessage('Boleto gerado com sucesso!');
+
+    //fName := GetHomePath + PathDelim + 'BoletoNu.pdf';
+    //fName := 'Download/BoletoNu.pdf';
+
+    {$IFDEF ANDROID}
+      //URI := TJnet_Uri.JavaClass.parse(StringToJString('file:///' + fName));
+      URI := TJnet_Uri.JavaClass.parse(StringToJString(vCaminho));
+      intent := TJIntent.Create;
+      intent.setAction(TJIntent.JavaClass.ACTION_VIEW);
+      intent.setDataAndType(URI,StringToJString('application/pdf'));
+      intent.setFlags(TJintent.JavaClass.FLAG_ACTIVITY_NO_HISTORY or TJIntent.JavaClass.FLAG_ACTIVITY_CLEAR_TOP);
+      SharedActivity.startActivity(intent);
+    {$ENDIF}
+  end;
+
+  {vNumero := '+55032984717002'; //<-- País+DDD+Número
+  vTexto := 'Mandar boleto referente ao mês de ' + lblMes.Text + ', no valor de ' + lblTotal.Text + '. Obrigado!!!'; //<-- Texto que será enviado
+  //EndURL := 'https://api.whatsapp.com/send?phone='+Numero+'&text='+Texto;
+  vEndURL := 'https://api.whatsapp.com/send?phone='+vNumero+'&text='+vTexto+'&source=&data=#23';
+  {API DO WHATSAPP
+  try
+    {$IFDEF ANDROID
+    Intend := TJIntent.JavaClass.init(TJIntent.JavaClass.ACTION_VIEW);
+    Intend.setData(TJnet_Uri.JavaClass.parse(StringToJString(TIdURI.URLEncode(vEndURL))));
+    SharedActivity.startActivity(Intend);
+    {$ENDIF ANDROID
+  Except on E: Exception do
+  ShowMessage(E.Message);
+   end;}
+end;
+
+procedure TForm2.CarregaFinanceiro(dtInicio, dtFim: String);
+var
+  vItemAdd : TListViewItem;
+  vTotal : real;
+  vObjeto : TTextObjectAppearance;
+begin
+  vTotal := 0;
+  lstFinanceiro.Items.Clear;
+  lstFinanceiro.BeginUpdate;
+  qryFinanceiro.Close;
+  qryFinanceiro.SQL.Clear;
+  qryFinanceiro.SQL.Add('select F.id, F.id_cliente, C.NOME, F.data_vencimento, F.numero, F.parcelas, F.valor, F.ORIGEM, F.DATA_PAGAMENTO, F.OBSERVACAO' +
+                  ' from FINANCEIRO F JOIN CLIENTE C ON (C.ID = F.ID_CLIENTE)' +
+                  ' where F.data_vencimento between ' + dtInicio + ' and ' + dtFim + ' and C.CPF = ' + QuotedStr(vCPF));
+
+  qryFinanceiro.Open;
+  qryFinanceiro.First;
+  while not qryFinanceiro.Eof do
+  begin
+    vItemAdd := lstFinanceiro.items.Add;
+    if (qryFinanceiro.FieldByName('DATA_PAGAMENTO').AsString <> '01/01/00') and (qryFinanceiro.FieldByName('DATA_PAGAMENTO').AsString <> '01/01/1900') then
+      //mudar cor da linha
+    vItemAdd.Detail := qryFinanceiro.FieldByName('id_cliente').AsString;
+    vItemAdd.Text := qryFinanceiro.FieldByName('origem').AsString;
+    vItemAdd.Data[TMultiDetailAppearanceNames.Detail1] := 'Valor: ' + qryFinanceiro.FieldByName('valor').AsString;
+    vItemAdd.Data[TMultiDetailAppearanceNames.Detail2] := 'Parcelas: ' + qryFinanceiro.FieldByName('numero').AsString + ' de ' + qryFinanceiro.FieldByName('Parcelas').AsString;
+    vItemAdd.Data[TMultiDetailAppearanceNames.Detail3] := qryFinanceiro.FieldByName('observacao').AsString;
+
+    vItemAdd.Bitmap := Circle1.MakeScreenshot;
+    vTotal := vTotal + qryFinanceiro.FieldByName('valor').AsFloat;
+    qryFinanceiro.Next;
+  end;
+  lblTotal.Text := 'Total: ' + FloatToStr(vTotal);
+
+  lstFinanceiro.EndUpdate;
+  qryFinanceiro.Close;
+end;
+
+procedure TForm2.edtLoginKeyUp(Sender: TObject; var Key: Word;
+  var KeyChar: Char; Shift: TShiftState);
+begin
+  if Length(edtLogin.Text) = 3 then
+  begin
+     edtLogin.Text := edtLogin.Text + '.';
+     edtLogin.Selstart := Length(edtLogin.text);
+  end;
+
+  if Length(edtLogin.Text) = 7 then
+  begin
+     edtLogin.Text := edtLogin.Text + '.';
+     edtLogin.Selstart := Length(edtLogin.text);
+  end;
+
+  if Length(edtLogin.Text) = 11 then
+  begin
+     edtLogin.Text := edtLogin.Text + '-';
+     edtLogin.Selstart := Length(edtLogin.text);
+  end;
+end;
+
+procedure TForm2.FDConnection1BeforeConnect(Sender: TObject);
+begin
+  FDConnection1.Params.Values['Database'] := GetHomePath + PathDelim + 'bd.db3';
+  //FDConnection1.Params.Values['Database'] := 'C:\Delphi\AppSysCredit\BD\bd.db3';
+end;
+
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  FDConnection1.Connected := True;
+end;
+
+procedure TForm2.FormShow(Sender: TObject);
+begin
+  if TestaConexao then
+  begin
+    TabControl1.ActiveTab := tblogin;
+    TabControl1.TabPosition := TTabPosition.None;
+    edtLogin.SetFocus;
+
+    qryConfig.Close;
+    qryConfig.SQL.Clear;
+    qryConfig.SQL.Add('Select * From CONFIG');
+    qryConfig.Open;
+
+    if qryConfig.FieldByName('lembrar').AsString = 'S' then
+    begin
+      {Edit1.Text := DateToStr(Date);
+      lblMes.Text := '';
+      lblMes.Text := uppercase(formatdatetime('MMMM',(StrToDate(Edit1.Text))));
+      vDtInicio := 'STR_TO_DATE(" ' + DateToStr(StartOfTheMonth(StrToDate(Edit1.Text))) + ' ", "%d/%m/%Y")';
+      vDtFim := 'STR_TO_DATE("' + DateToStr(EndOfTheMonth(StrToDate(Edit1.Text))) + '", "%d/%m/%Y")';}
+      edtLogin.Text := qryConfig.FieldByName('CPF').AsString;
+      //CarregaFinanceiro(vDtInicio, vDtFim);
+      //MudarAba(tbFinanceiro, Sender);
+      btnLoginClick(Self);
+    end;
+  end;
+end;
+
+procedure TForm2.imgAnteriorClick(Sender: TObject);
+var
+  vDtInicio, vDtFim : String;
+begin
+  Edit1.Text := DateToStr(IncMonth(StrToDate(Edit1.Text), -1));
+  lblMes.Text := uppercase(formatdatetime('MMMM',StrToDate(Edit1.Text)));
+
+  vDtInicio := 'STR_TO_DATE(" ' + DateToStr(StartOfTheMonth(StrToDate(Edit1.Text))) + ' ", "%d/%m/%Y")';
+  vDtFim := 'STR_TO_DATE("' + DateToStr(EndOfTheMonth(StrToDate(Edit1.Text))) + '", "%d/%m/%Y")';
+
+  CarregaFinanceiro(vDtInicio, vDtFim);
+end;
+
+procedure TForm2.imgProximoClick(Sender: TObject);
+var
+  vDtInicio, vDtFim : String;
+begin
+  Edit1.Text := DateToStr(IncMonth(StrToDate(Edit1.Text)));
+  lblMes.Text := uppercase(formatdatetime('MMMM',StrToDate(Edit1.Text)));
+
+  vDtInicio := 'STR_TO_DATE(" ' + DateToStr(StartOfTheMonth(StrToDate(Edit1.Text))) + ' ", "%d/%m/%Y")';
+  vDtFim := 'STR_TO_DATE("' + DateToStr(EndOfTheMonth(StrToDate(Edit1.Text))) + '", "%d/%m/%Y")';
+
+  CarregaFinanceiro(vDtInicio, vDtFim);
+end;
+
+procedure TForm2.lstFinanceiroGesture(Sender: TObject;
+  const EventInfo: TGestureEventInfo; var Handled: Boolean);
+begin
+  if EventInfo.GestureID = sgiRight then
+    imgAnteriorClick(Sender)
+  else if EventInfo.GestureID = sgiLeft then
+    imgProximoClick(Sender);
+end;
+
+procedure TForm2.lstFinanceiroItemClick(const Sender: TObject;
+  const AItem: TListViewItem);
+begin
+  if lstFinanceiro.Items[lstFinanceiro.Selected.Index].Data[TMultiDetailAppearanceNames.Detail3].AsString <> '' then
+    ShowMessage(lstFinanceiro.Items[lstFinanceiro.Selected.Index].Data[TMultiDetailAppearanceNames.Detail3].AsString);
+end;
+
+procedure TForm2.MudarAba(AtabItem: TTabItem; Sender: TObject);
+begin
+  actMudarAba.Tab := AtabItem;
+  actMudarAba.ExecuteTarget(Sender);
+end;
+
+function TForm2.TestaConexao: Boolean;
+begin
+ try
+    IdTCPClient1.ReadTimeout := 2000;
+    IdTCPClient1.ConnectTimeout := 2000;
+    IdTCPClient1.Port := 80;
+    IdTCPClient1.host := 'google.com';
+    IdTCPClient1.Connect;
+    IdTCPClient1.Disconnect;
+    Result := True;
+  except
+    ShowMessage('Você está sem conexão com a internet.' + #13 + 'Conecte-se para continuar usando o aplicativo!');
+    Result := False;
+  end;
+end;
+
+end.

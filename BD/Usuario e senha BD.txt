@@ -1,0 +1,4 @@
+url: syscredit.mysql.uhserver.com
+banco: syscredit
+user: rsilveiramig
+Senha: raquel15*

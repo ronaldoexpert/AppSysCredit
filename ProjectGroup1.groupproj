@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{BD3F9E41-7D77-45B4-9423-511A6782A92F}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="APPSysCredit.dproj">
+            <Dependencies>Service\RServiceAndroid.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Service\RServiceAndroid.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="APPSysCredit" DependsOnTargets="RServiceAndroid">
+        <MSBuild Projects="APPSysCredit.dproj"/>
+    </Target>
+    <Target Name="APPSysCredit:Clean" DependsOnTargets="RServiceAndroid:Clean">
+        <MSBuild Projects="APPSysCredit.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="APPSysCredit:Make" DependsOnTargets="RServiceAndroid:Make">
+        <MSBuild Projects="APPSysCredit.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RServiceAndroid">
+        <MSBuild Projects="Service\RServiceAndroid.dproj"/>
+    </Target>
+    <Target Name="RServiceAndroid:Clean">
+        <MSBuild Projects="Service\RServiceAndroid.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RServiceAndroid:Make">
+        <MSBuild Projects="Service\RServiceAndroid.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="APPSysCredit;RServiceAndroid"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="APPSysCredit:Clean;RServiceAndroid:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="APPSysCredit:Make;RServiceAndroid:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
