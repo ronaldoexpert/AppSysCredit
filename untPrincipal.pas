@@ -41,7 +41,7 @@ type
     Layout4: TLayout;
     Layout8: TLayout;
     rectLogin: TRoundRect;
-    btnLogin: TButton;
+    btnLogin: TSpeedButton;
     lblEsqueceuSenha: TLabel;
     Rectangle1: TRectangle;
     Rectangle2: TRectangle;
@@ -68,6 +68,22 @@ type
     lblLembrar: TLabel;
     qryAuxiliar: TFDQuery;
     qryGetPDF: TMyQuery;
+    tbConfig: TTabItem;
+    ListBox1: TListBox;
+    lstHost: TMetropolisUIListBoxItem;
+    lstBanco: TMetropolisUIListBoxItem;
+    lstUsuario: TMetropolisUIListBoxItem;
+    lstSenha: TMetropolisUIListBoxItem;
+    edtHost: TEdit;
+    edtBanco: TEdit;
+    edtUsuario: TEdit;
+    edtSenha: TEdit;
+    recTopConfig: TRectangle;
+    SpeedButton1: TSpeedButton;
+    SpeedButton2: TSpeedButton;
+    Layout6: TLayout;
+    btnConfig: TSpeedButton;
+    RoundRect2: TRoundRect;
     procedure FormShow(Sender: TObject);
     procedure imgProximoClick(Sender: TObject);
     procedure imgAnteriorClick(Sender: TObject);
@@ -82,12 +98,16 @@ type
     procedure FDConnection1BeforeConnect(Sender: TObject);
     procedure lstFinanceiroItemClick(const Sender: TObject;
       const AItem: TListViewItem);
+    procedure SpeedButton2Click(Sender: TObject);
+    procedure btnConfigClick(Sender: TObject);
+    procedure SpeedButton1Click(Sender: TObject);
   private
     { Private declarations }
     vCPF : String;
     procedure MudarAba (AtabItem: TTabItem; Sender: TObject);
     procedure CarregaFinanceiro(dtInicio, dtFim : String);
     function TestaConexao : Boolean;
+    procedure CarregaConfig;
   public
     { Public declarations }
   end;
@@ -98,17 +118,24 @@ var
 implementation
 
 uses
+  {$IFDEF ANDROID}
+    Androidapi.JNI.GraphicsContentViewText,
+    Androidapi.Helpers,
+    Androidapi.JNI.JavaTypes,
+    Androidapi.JNI.Net,
+    FMX.Helpers.Android,
+    Androidapi.Jni,
+    Androidapi.JNIBridge,
+  {$ENDIF}
   System.IOUtils,
-  Androidapi.JNI.GraphicsContentViewText,
-  Androidapi.Helpers,
-  Androidapi.JNI.JavaTypes,
-  Androidapi.JNI.Net,
-  FMX.Helpers.Android,
-  idUri,
-  Androidapi.Jni,
-  Androidapi.JNIBridge;
+  idUri;
 
 {$R *.fmx}
+
+procedure TForm2.btnConfigClick(Sender: TObject);
+begin
+  MudarAba(tbConfig, Sender);
+end;
 
 procedure TForm2.btnLoginClick(Sender: TObject);
 var
@@ -116,7 +143,7 @@ var
 begin
   if edtLogin.Text <> '' then
   begin
-    MyConnection1.Connected := True;
+    //MyConnection1.Connected := True;
     qryLogin.Close;
     qryLogin.SQL.Clear;
     qryLogin.SQL.Add('Select * from CLIENTE WHERE CPF = ' + QuotedStr(edtLogin.Text));
@@ -230,6 +257,18 @@ begin
    end;}
 end;
 
+procedure TForm2.CarregaConfig;
+begin
+  qryConfig.SQL.Clear;
+  qryConfig.Close;
+  qryConfig.SQL.Add('Select * From CONFIG');
+  qryConfig.Open;
+  edtHost.Text := qryConfig.FieldByName('HOST').AsString;
+  edtBanco.Text := qryConfig.FieldByName('BANCO').AsString;
+  edtUsuario.Text := qryConfig.FieldByName('USUARIO').AsString;
+  edtSenha.Text := qryConfig.FieldByName('SENHA').AsString;
+end;
+
 procedure TForm2.CarregaFinanceiro(dtInicio, dtFim: String);
 var
   vItemAdd : TListViewItem;
@@ -291,14 +330,44 @@ begin
 end;
 
 procedure TForm2.FDConnection1BeforeConnect(Sender: TObject);
+var
+  vCaminho : String;
 begin
-  FDConnection1.Params.Values['Database'] := GetHomePath + PathDelim + 'bd.db3';
+  with FDConnection1 do
+  begin
+    {$IFDEF MSWINDOWS}
+      try
+        Params.Values['DATABASE'] := 'C:\Delphi\AppSysCredit\BD\bd.db3';
+      Except on e : Exception do
+        raise Exception.Create('Erro ao carregar banco de dados: ' + e.Message);
+      end;
+    {$ELSE}
+      try
+        vCaminho := GetHomePath + PathDelim + 'bd.db3';
+        Params.Values['Database'] := vCaminho;
+      Except on e : Exception do
+        raise Exception.Create('Erro ao carregar banco de dados: ' + e.Message);
+      end;
+    {$ENDIF}
+  end;
+
+  //vCaminho := GetHomePath + PathDelim + 'bd.db3';
+  //FDConnection1.Params.Values['Database'] := vCaminho;
   //FDConnection1.Params.Values['Database'] := 'C:\Delphi\AppSysCredit\BD\bd.db3';
 end;
 
 procedure TForm2.FormCreate(Sender: TObject);
 begin
   FDConnection1.Connected := True;
+
+  CarregaConfig;
+
+  MyConnection1.Server := qryConfig.FieldByName('HOST').AsString;
+  MyConnection1.Port := 3306;
+  MyConnection1.Database := qryConfig.FieldByName('BANCO').AsString;
+  MyConnection1.Username := qryConfig.FieldByName('USUARIO').AsString;
+  MyConnection1.Password := qryConfig.FieldByName('SENHA').AsString;
+  MyConnection1.Connected := True;
 end;
 
 procedure TForm2.FormShow(Sender: TObject);
@@ -308,11 +377,6 @@ begin
     TabControl1.ActiveTab := tblogin;
     TabControl1.TabPosition := TTabPosition.None;
     edtLogin.SetFocus;
-
-    qryConfig.Close;
-    qryConfig.SQL.Clear;
-    qryConfig.SQL.Add('Select * From CONFIG');
-    qryConfig.Open;
 
     if qryConfig.FieldByName('lembrar').AsString = 'S' then
     begin
@@ -375,6 +439,25 @@ procedure TForm2.MudarAba(AtabItem: TTabItem; Sender: TObject);
 begin
   actMudarAba.Tab := AtabItem;
   actMudarAba.ExecuteTarget(Sender);
+end;
+
+procedure TForm2.SpeedButton1Click(Sender: TObject);
+begin
+  MudarAba(tbLogin, Sender);
+end;
+
+procedure TForm2.SpeedButton2Click(Sender: TObject);
+begin
+  qryConfig.SQL.Clear;
+  qryConfig.SQL.Add('UPDATE CONFIG SET' +
+  '  HOST = ' + QuotedStr(edtHost.Text) +
+  ', BANCO = ' + QuotedStr(edtBanco.Text) +
+  ', USUARIO = ' + QuotedStr(edtUsuario.Text) +
+  ', SENHA = ' + QuotedStr(edtSenha.Text)
+  );
+  qryConfig.Execute;
+  Application.Terminate;
+  //MudarAba(tbLogin, Sender);
 end;
 
 function TForm2.TestaConexao: Boolean;
